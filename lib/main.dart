@@ -1,3 +1,12 @@
+/**
+ * Zakah & Tazkiyah Calculator
+ * 
+ * Developed in collaboration with OpenAI Codex & GPT-5.6
+ * for the OpenAI Build Week Hackathon.
+ * 
+ * Code generated, refactored, and optimized by OpenAI Codex.
+ */
+
 import 'dart:ui';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

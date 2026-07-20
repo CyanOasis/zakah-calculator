@@ -1,4 +1,12 @@
-// Trigger deployment
+/**
+ * Zakah Market Rate Worker Backend
+ * 
+ * Developed in collaboration with OpenAI Codex & GPT-5.6
+ * for the OpenAI Build Week Hackathon.
+ * 
+ * Code generated, refactored, and optimized by OpenAI Codex.
+ */
+
 const BAJUS_URLS = [
   'https://bajus.org/gold-price',
   'https://www.bajus.org/gold-price',
