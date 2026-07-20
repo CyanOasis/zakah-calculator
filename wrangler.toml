@@ -1,0 +1,7 @@
+name = "zakah-market-worker"
+main = "backend/worker.js"
+compatibility_date = "2026-03-25"
+
+[[kv_namespaces]]
+binding = "ZAKAH_CACHE"
+id = "b52956a947104a389e3d8463feb88504"

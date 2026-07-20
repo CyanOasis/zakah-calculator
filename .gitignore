@@ -1,0 +1,60 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.project
+.settings/
+.vscode/
+as-deps/
+.idea/
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Android-specific
+/android/app/local.properties
+/android/key.properties
+/android/app/src/main/assets/flutter_shared/
+/android/app/src/main/assets/flutter_assets/
+/android/app/build/
+/android/.gradle/
+/android/local.properties
+/android/flutter-plugins/
+/android/flutter-plugins-dependencies
+
+# iOS-specific
+/ios/.xcode_backend_sh
+/ios/Flutter/.last_build_id
+/ios/Flutter/ephemeral/
+/ios/Flutter/flutter_export_environment.sh
+/ios/Flutter/Generated.xcconfig
+/ios/Flutter/AppFrameworkInfo.plist
+/ios/Runner/GeneratedPluginRegistrant.h
+/ios/Runner/GeneratedPluginRegistrant.m
+
+# macOS-specific
+/macos/Flutter/ephemeral/
+
+# Windows-specific
+/windows/flutter/ephemeral/
+
+# Linux-specific
+/linux/flutter/ephemeral/
+
+# Web-specific
+/web/flutter_bootstrap.js
+
+# Flutter-specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Custom constraints
+.agents/
+release/
