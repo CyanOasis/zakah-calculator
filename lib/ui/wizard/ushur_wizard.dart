@@ -40,7 +40,7 @@ class _UshurWizardState extends State<UshurWizard> {
               hint: '0',
               icon: Icons.grass,
               suffixText: 'kg',
-              onChanged: (v) => provider.updateUshur(yieldAmount: double.tryParse(v) ?? 0.0),
+              onChanged: (v) => provider.updateUshur(yieldAmount: ZakatProvider.parseLocalizedDouble(v)),
             ),
             const SizedBox(height: 16),
             Text(AppLocalizations.of(context)!.irrigation_natural, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -51,7 +51,30 @@ class _UshurWizardState extends State<UshurWizard> {
               onChanged: (v) => provider.updateUshur(isNatural: v),
               activeColor: Theme.of(context).colorScheme.primary,
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
+            if (provider.cropYield > 0 && !provider.isUshurEligible)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFFECB3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Color(0xFFF57F17), size: 20),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Yield is below the 5 Wasaq Nisab threshold (653 kg). No Ushur is due.',
+                        style: TextStyle(fontSize: 12, color: Color(0xFFF57F17), fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ProfessionalCard(
               color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               child: Column(

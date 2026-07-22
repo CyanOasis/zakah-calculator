@@ -3,7 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MetalApiService {
-  static const String _backendBaseUrl = 'https://zakah-market-worker.tungsahoor958.workers.dev';
+  static const List<String> _backendBaseUrls = [
+    'https://zakah-market-worker.tungsahoor958.workers.dev',
+    'https://zakah-market-backup.tungsahoor958.workers.dev',
+  ];
   static const Duration _refreshInterval = Duration(hours: 24);
   static const Duration _forceRefreshCooldown = Duration(minutes: 10);
 
@@ -89,54 +92,62 @@ class MetalApiService {
 
   Future<Map<String, dynamic>> _fetchFromBackend(String currency, {bool forceRefresh = false}) async {
     final forceParam = forceRefresh ? '&force=1' : '';
-    final uri = Uri.parse('$_backendBaseUrl/api/market/latest?currency=${currency.toUpperCase()}$forceParam');
-    final response = await http.get(uri, headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'ZakahCalculator/1.0',
-    });
+    Object? lastException;
 
-    if (response.statusCode != 200) {
-      throw Exception('Backend market request failed: ${response.statusCode}');
-    }
+    for (final baseUrl in _backendBaseUrls) {
+      try {
+        final uri = Uri.parse('$baseUrl/api/market/latest?currency=${currency.toUpperCase()}$forceParam');
+        final response = await http.get(uri, headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'ZakahCalculator/1.0',
+        }).timeout(const Duration(seconds: 5));
 
-    final decoded = json.decode(response.body) as Map<String, dynamic>;
-    final metals = decoded['metals'] as Map<String, dynamic>;
-    final gold = metals['gold'] as Map<String, dynamic>;
-    final silver = metals['silver'] as Map<String, dynamic>;
-    final rawHistory = decoded['history'];
-    final history = <Map<String, dynamic>>[];
-    if (rawHistory is List) {
-      for (final row in rawHistory) {
-        if (row is! Map) continue;
-        final date = row['date']?.toString() ?? '';
-        final goldValue = (row['gold'] as num?)?.toDouble();
-        final silverValue = (row['silver'] as num?)?.toDouble();
-        if (date.isEmpty || goldValue == null || silverValue == null) continue;
-        history.add({
-          'date': date,
-          'gold': goldValue,
-          'silver': silverValue,
-        });
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body) as Map<String, dynamic>;
+          final metals = decoded['metals'] as Map<String, dynamic>;
+          final gold = metals['gold'] as Map<String, dynamic>;
+          final silver = metals['silver'] as Map<String, dynamic>;
+          final rawHistory = decoded['history'];
+          final history = <Map<String, dynamic>>[];
+          if (rawHistory is List) {
+            for (final row in rawHistory) {
+              if (row is! Map) continue;
+              final date = row['date']?.toString() ?? '';
+              final goldValue = (row['gold'] as num?)?.toDouble();
+              final silverValue = (row['silver'] as num?)?.toDouble();
+              if (date.isEmpty || goldValue == null || silverValue == null) continue;
+              history.add({
+                'date': date,
+                'gold': goldValue,
+                'silver': silverValue,
+              });
+            }
+          }
+
+          return {
+            'source': decoded['source'] ?? 'Unknown',
+            'updated_at': decoded['updatedAt'],
+            'cached': decoded['cached'] ?? false,
+            'bajus_status': decoded['bajusStatus'],
+            'bajus_error': decoded['bajusError'],
+            'history': history,
+            'prices': {
+              'gold_pure': (gold['purePerGram'] as num).toDouble(),
+              'gold_24': (gold['purePerGram'] as num).toDouble(),
+              'gold_22': (gold['k22PerGram'] as num).toDouble(),
+              'gold_21': (gold['k21PerGram'] as num).toDouble(),
+              'gold_18': (gold['k18PerGram'] as num).toDouble(),
+              'gold_traditional': (gold['traditionalPerGram'] as num).toDouble(),
+              'silver_pure': (silver['purePerGram'] as num).toDouble(),
+            }
+          };
+        }
+      } catch (e) {
+        lastException = e;
       }
     }
 
-    return {
-      'source': decoded['source'] ?? 'Unknown',
-      'updated_at': decoded['updatedAt'],
-      'cached': decoded['cached'] ?? false,
-      'bajus_status': decoded['bajusStatus'],
-      'bajus_error': decoded['bajusError'],
-      'history': history,
-      'prices': {
-        'gold_pure': (gold['purePerGram'] as num).toDouble(),
-        'gold_24': (gold['purePerGram'] as num).toDouble(),
-        'gold_22': (gold['k22PerGram'] as num).toDouble(),
-        'gold_21': (gold['k21PerGram'] as num).toDouble(),
-        'gold_18': (gold['k18PerGram'] as num).toDouble(),
-        'gold_traditional': (gold['traditionalPerGram'] as num).toDouble(),
-        'silver_pure': (silver['purePerGram'] as num).toDouble(),
-      }
-    };
+    throw Exception('All backend endpoints failed: $lastException');
   }
 
   Future<void> _cacheSnapshot(String currency, Map<String, dynamic> snapshot) async {

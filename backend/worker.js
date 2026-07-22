@@ -100,18 +100,27 @@ function parseTrySourceDateToIso(rawDate) {
 
 
 function extractBajusTablePrices(html) {
-  const prices = [...html.matchAll(/<span[^>]*class=["'][^"']*price[^"']*["'][^>]*>\s*([\d.,]+)\s*BDT\s*\/\s*GRAM\s*<\/span>/gi)]
+  let prices = [...html.matchAll(/<span[^>]*class=["'][^"']*price[^"']*["'][^>]*>\s*([\d.,]+)\s*(?:BDT|TK)?\s*\/?\s*(?:GRAM|GRAMS)?\s*<\/span>/gi)]
     .map((match) => toNumber(match[1]))
-    .filter((value) => Number.isFinite(value));
+    .filter((value) => Number.isFinite(value) && value > 100);
 
-  if (prices.length < 8) return null;
+  if (prices.length < 5) {
+    const genericNumbers = [...html.matchAll(/<td>\s*([\d.,]{4,8})\s*<\/td>/gi)]
+      .map((match) => toNumber(match[1]))
+      .filter((value) => Number.isFinite(value) && value > 500);
+    if (genericNumbers.length >= 5) {
+      prices = genericNumbers;
+    }
+  }
+
+  if (prices.length < 4) return null;
 
   return {
     gold22: prices[0],
-    gold21: prices[1],
-    gold18: prices[2],
-    goldTraditional: prices[3],
-    silver22: prices[4],
+    gold21: prices[1] || prices[0] * (21 / 22),
+    gold18: prices[2] || prices[0] * (18 / 22),
+    goldTraditional: prices[3] || prices[0] * 0.65,
+    silver22: prices[4] || prices[0] * 0.025,
   };
 }
 

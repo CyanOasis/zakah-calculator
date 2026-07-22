@@ -38,19 +38,19 @@ class _AnimalWizardState extends State<AnimalWizard> {
               label: AppLocalizations.of(context)!.sheep_count,
               hint: '0',
               icon: Icons.pets,
-              onChanged: (v) => provider.updateAnimalCounts(sheep: int.tryParse(v) ?? 0),
+              onChanged: (v) => provider.updateAnimalCounts(sheep: ZakatProvider.parseLocalizedDouble(v).toInt()),
             ),
             CustomInputField(
               label: AppLocalizations.of(context)!.cow_count,
               hint: '0',
               icon: Icons.agriculture,
-              onChanged: (v) => provider.updateAnimalCounts(cow: int.tryParse(v) ?? 0),
+              onChanged: (v) => provider.updateAnimalCounts(cow: ZakatProvider.parseLocalizedDouble(v).toInt()),
             ),
             CustomInputField(
               label: AppLocalizations.of(context)!.camel_count,
               hint: '0',
               icon: Icons.terrain,
-              onChanged: (v) => provider.updateAnimalCounts(camel: int.tryParse(v) ?? 0),
+              onChanged: (v) => provider.updateAnimalCounts(camel: ZakatProvider.parseLocalizedDouble(v).toInt()),
             ),
             const SizedBox(height: 40),
             ProfessionalCard(

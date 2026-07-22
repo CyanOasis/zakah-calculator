@@ -62,6 +62,7 @@ class _ZakatWizardState extends State<ZakatWizard> {
   }
 
   void _nextStep() {
+    _syncProvider(context.read<ZakatProvider>());
     if (_currentStep < 2) {
       setState(() => _currentStep++);
     } else {
@@ -123,32 +124,66 @@ class _ZakatWizardState extends State<ZakatWizard> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ZakatProvider>();
-    _syncProvider(provider);
     final currencyFormat = NumberFormat.currency(
       symbol: '${provider.selectedCountry.currency} ',
       decimalDigits: 0,
     );
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _buildAppBar(context, provider),
-      body: Column(
-        children: [
-          _buildStepperHeader(provider),
-          Expanded(
-            child: IndexedStack(
-              index: _currentStep,
-              children: [
-                _buildStep1(provider),
-                _buildStep2(provider),
-                _buildStep3(provider),
-              ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _showUnsavedDialog();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _buildAppBar(context, provider),
+        body: Column(
+          children: [
+            _buildStepperHeader(provider),
+            Expanded(
+              child: IndexedStack(
+                index: _currentStep,
+                children: [
+                  _buildStep1(provider),
+                  _buildStep2(provider),
+                  _buildStep3(provider),
+                ],
+              ),
             ),
-          ),
-          _buildBottomSummary(provider, currencyFormat),
-        ],
+            _buildBottomSummary(provider, currencyFormat),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<bool> _showUnsavedDialog() async {
+    bool hasInput = _amounts.values.any((val) => val > 0);
+    if (!hasInput) return true;
+
+    return (await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Unsaved Progress'),
+            content: const Text('You have active calculation inputs. Do you want to discard them?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Discard'),
+              ),
+            ],
+          ),
+        )) ??
+        false;
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context, ZakatProvider provider) {
@@ -490,7 +525,10 @@ class _ZakatWizardState extends State<ZakatWizard> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.withOpacity(0.3))),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.withOpacity(0.3))),
         ),
-        onChanged: (val) => _amounts[type] = double.tryParse(val) ?? 0,
+        onChanged: (val) {
+          _amounts[type] = ZakatProvider.parseLocalizedDouble(val);
+          _syncProvider(provider);
+        },
       ),
     );
   }

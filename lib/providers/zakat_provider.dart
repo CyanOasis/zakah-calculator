@@ -345,10 +345,17 @@ class ZakatProvider with ChangeNotifier {
       _gold18PricePerGram = (prices['gold_18'] as num?)?.toDouble() ?? _goldPricePerGram * (18.0 / 24.0);
       _goldTraditionalPricePerGram = (prices['gold_traditional'] as num?)?.toDouble() ?? _goldPricePerGram * 0.60;
       _silverPricePerGram = (prices['silver_pure'] as num?)?.toDouble() ?? 0.0;
+
+      // Emergency baseline fallbacks if zero
+      if (_goldPricePerGram <= 0.0 || _silverPricePerGram <= 0.0) {
+        _applyEmergencyFallbackPrices();
+      }
+
       _applyBackendTrendHistory(snapshot['history']);
     } catch (e) {
       if (requestId == _fetchRequestId) {
         _marketFetchFailed = true;
+        _applyEmergencyFallbackPrices();
         debugPrint('Error fetching prices: $e');
       }
     } finally {
@@ -357,6 +364,38 @@ class ZakatProvider with ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  void _applyEmergencyFallbackPrices() {
+    if (_selectedCountry.currency == 'BDT') {
+      _goldPricePerGram = 21170.0; // Approx pure gold BDT/g
+      _gold22PricePerGram = 21170.0 * (22.0 / 24.0);
+      _gold21PricePerGram = 21170.0 * (21.0 / 24.0);
+      _gold18PricePerGram = 21170.0 * (18.0 / 24.0);
+      _goldTraditionalPricePerGram = 21170.0 * 0.60;
+      _silverPricePerGram = 490.0;
+    } else {
+      _goldPricePerGram = 85.0; // Approx pure gold USD/g
+      _gold22PricePerGram = 85.0 * (22.0 / 24.0);
+      _gold21PricePerGram = 85.0 * (21.0 / 24.0);
+      _gold18PricePerGram = 85.0 * (18.0 / 24.0);
+      _goldTraditionalPricePerGram = 85.0 * 0.60;
+      _silverPricePerGram = 1.00;
+    }
+  }
+
+  static double parseLocalizedDouble(dynamic raw) {
+    if (raw == null) return 0.0;
+    String text = raw.toString().trim();
+    if (text.isEmpty) return 0.0;
+
+    const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    for (int i = 0; i < 10; i++) {
+      text = text.replaceAll(bnDigits[i], '$i');
+    }
+
+    text = text.replaceAll(' ', '').replaceAll(',', '');
+    return double.tryParse(text) ?? 0.0;
   }
 
   void _applyBackendTrendHistory(dynamic rawHistory) {
@@ -435,11 +474,11 @@ class ZakatProvider with ChangeNotifier {
         case 24:
           return weightInGrams * baseSilver;
         case 22:
-          return weightInGrams * baseSilver * 0.925;
+          return weightInGrams * baseSilver * (22.0 / 24.0);
         case 21:
-          return weightInGrams * baseSilver * 0.900;
+          return weightInGrams * baseSilver * (21.0 / 24.0);
         case 19:
-          return weightInGrams * baseSilver * 0.800;
+          return weightInGrams * baseSilver * (19.0 / 24.0);
         default:
           return weightInGrams * baseSilver;
       }
@@ -492,41 +531,97 @@ class ZakatProvider with ChangeNotifier {
 
   bool get isZakatDue => isZakatEligible && hawlCompleted;
 
-  double get zakatDue => isZakatDue ? netWealth * 0.025 : 0.0;
+  double get estimatedZakat => isZakatEligible ? netWealth * 0.025 : 0.0;
 
-  // Livestock Zakat Logic
+  double get zakatDue => estimatedZakat;
+
+  bool get isHawlPending => isZakatEligible && !hawlCompleted;
+
+  // Livestock Zakat Logic (Fiqh Accurate)
   String get animalZakatResult {
     List<String> results = [];
     
-    // Sheep/Goats
+    // Sheep/Goats (Nisab = 40)
     if (sheepCount >= 40) {
-      if (sheepCount <= 120) results.add('1 sheep');
-      else if (sheepCount <= 200) results.add('2 sheep');
-      else if (sheepCount <= 399) results.add('3 sheep');
-      else {
+      if (sheepCount <= 120) {
+        results.add('1 sheep');
+      } else if (sheepCount <= 200) {
+        results.add('2 sheep');
+      } else if (sheepCount <= 399) {
+        results.add('3 sheep');
+      } else {
         int count = 4 + ((sheepCount - 400) ~/ 100);
         results.add('$count sheep');
       }
     }
 
-    // Cows
+    // Cows / Cattle (Nisab = 30; every 30 = 1 Tabi', every 40 = 1 Musinnah)
     if (cowCount >= 30) {
-      if (cowCount <= 39) results.add('1-year-old calf');
-      else if (cowCount <= 59) results.add('2-year-old calf');
-      else results.add('Two 1-year-old calves');
+      int tabis = 0;
+      int musinnahs = 0;
+      int rem = cowCount;
+      
+      while (rem >= 30) {
+        if (rem % 40 == 0) {
+          musinnahs += rem ~/ 40;
+          rem = 0;
+        } else if (rem % 30 == 0) {
+          tabis += rem ~/ 30;
+          rem = 0;
+        } else if (rem >= 40 && (rem - 40) % 30 == 0) {
+          musinnahs += 1;
+          rem -= 40;
+        } else if (rem >= 30) {
+          tabis += 1;
+          rem -= 30;
+        } else {
+          break;
+        }
+      }
+
+      List<String> cowParts = [];
+      if (tabis > 0) cowParts.add('$tabis Tabi\' (1-yr calf)');
+      if (musinnahs > 0) cowParts.add('$musinnahs Musinnah (2-yr cow)');
+      if (cowParts.isNotEmpty) results.add(cowParts.join(' & '));
     }
 
-    // Camels (Simple version)
+    // Camels (Nisab = 5)
     if (camelCount >= 5) {
-      if (camelCount < 25) results.add('${camelCount ~/ 5} sheep');
-      else results.add('1 young she-camel');
+      if (camelCount <= 9) {
+        results.add('1 sheep');
+      } else if (camelCount <= 14) {
+        results.add('2 sheep');
+      } else if (camelCount <= 19) {
+        results.add('3 sheep');
+      } else if (camelCount <= 24) {
+        results.add('4 sheep');
+      } else if (camelCount <= 35) {
+        results.add('1 Bint Makhad (1-yr female camel)');
+      } else if (camelCount <= 45) {
+        results.add('1 Bint Labun (2-yr female camel)');
+      } else if (camelCount <= 60) {
+        results.add('1 Hiqqah (3-yr female camel)');
+      } else if (camelCount <= 75) {
+        results.add('1 Jaza\'ah (4-yr female camel)');
+      } else if (camelCount <= 90) {
+        results.add('2 Bint Labun (2-yr female camels)');
+      } else if (camelCount <= 120) {
+        results.add('2 Hiqqah (3-yr female camels)');
+      } else {
+        int hiqqahs = camelCount ~/ 50;
+        results.add('$hiqqahs Hiqqah (for every 50 camels)');
+      }
     }
 
     return results.isEmpty ? 'No Zakat currently due' : results.join(', ');
   }
 
-  // Ushur Calculation
-  double get ushurDue => cropYield * (isNaturallyIrrigated ? 0.10 : 0.05);
+  // Ushur Calculation (5 Wasaq Nisab = 653 kg)
+  static const double ushurNisabKg = 653.0;
+
+  bool get isUshurEligible => cropYield >= ushurNisabKg;
+
+  double get ushurDue => isUshurEligible ? cropYield * (isNaturallyIrrigated ? 0.10 : 0.05) : 0.0;
 
   void setCalculationPriceOverrides({double? goldPerGram, double? silverPerGram, bool notify = true}) {
     final normalizedGold = (goldPerGram != null && goldPerGram > 0) ? goldPerGram : null;
