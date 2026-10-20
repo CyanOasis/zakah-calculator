@@ -5,6 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/metal_api_service.dart';
 import '../services/price_history_storage.dart';
 
+enum IrrigationMethod {
+  natural, // 10% (উশর - বৃষ্টি/নদী)
+  artificial, // 5% (অর্ধ-উশর - সেচ/পাম্প)
+  mixed, // 7.5% (তিন-চতুর্থাংশ উশর - যৌথ সেচ)
+}
+
 class Country {
   final String name;
   final String currency;
@@ -14,6 +20,10 @@ class Country {
   final double goldPremium;
   final double silverPremium;
   final double? manualSilverNisab;
+  final double goldNisabGrams;
+  final double silverNisabGrams;
+  final String goldNisabDisplay;
+  final String silverNisabDisplay;
 
   Country({
     required this.name,
@@ -24,6 +34,10 @@ class Country {
     this.goldPremium = 1.0,
     this.silverPremium = 1.0,
     this.manualSilverNisab,
+    this.goldNisabGrams = 85.0,
+    this.silverNisabGrams = 595.0,
+    this.goldNisabDisplay = '85.0 g',
+    this.silverNisabDisplay = '595.0 g',
   });
 }
 
@@ -52,7 +66,6 @@ class ZakatProvider with ChangeNotifier {
   List<MetalItem> goldItems = [];
   List<MetalItem> silverItems = [];
 
-
   List<Country> countries = [
     Country(
       name: 'Bangladesh',
@@ -60,18 +73,71 @@ class ZakatProvider with ChangeNotifier {
       flag: '🇧🇩',
       languageCode: 'bn',
       weightUnit: 'bhori',
+      goldNisabGrams: 87.48,
+      silverNisabGrams: 612.35,
+      goldNisabDisplay: '৮৭.৪৮ গ্রাম (৭.৫ ভরি)',
+      silverNisabDisplay: '৬১২.৩৫ গ্রাম (৫২.৫ ভরি)',
     ),
     Country(
       name: 'Turkey',
       currency: 'TRY',
       flag: '🇹🇷',
       languageCode: 'tr',
+      goldNisabGrams: 85.0,
+      silverNisabGrams: 595.0,
+      goldNisabDisplay: '85.0 gram',
+      silverNisabDisplay: '595.0 gram',
     ),
-    Country(name: 'Pakistan', currency: 'PKR', flag: '🇵🇰', languageCode: 'en'),
-    Country(name: 'India', currency: 'INR', flag: '🇮🇳', languageCode: 'en'),
-    Country(name: 'USA', currency: 'USD', flag: '🇺🇸', languageCode: 'en'),
-    Country(name: 'UAE', currency: 'AED', flag: '🇦🇪', languageCode: 'en'),
-    Country(name: 'Saudi Arabia', currency: 'SAR', flag: '🇸🇦', languageCode: 'en'),
+    Country(
+      name: 'Pakistan',
+      currency: 'PKR',
+      flag: '🇵🇰',
+      languageCode: 'en',
+      goldNisabGrams: 87.48,
+      silverNisabGrams: 612.35,
+      goldNisabDisplay: '87.48 g (7.5 tola)',
+      silverNisabDisplay: '612.35 g (52.5 tola)',
+    ),
+    Country(
+      name: 'India',
+      currency: 'INR',
+      flag: '🇮🇳',
+      languageCode: 'en',
+      goldNisabGrams: 87.48,
+      silverNisabGrams: 612.35,
+      goldNisabDisplay: '87.48 g (7.5 tola)',
+      silverNisabDisplay: '612.35 g (52.5 tola)',
+    ),
+    Country(
+      name: 'USA',
+      currency: 'USD',
+      flag: '🇺🇸',
+      languageCode: 'en',
+      goldNisabGrams: 85.0,
+      silverNisabGrams: 595.0,
+      goldNisabDisplay: '85.0 grams',
+      silverNisabDisplay: '595.0 grams',
+    ),
+    Country(
+      name: 'UAE',
+      currency: 'AED',
+      flag: '🇦🇪',
+      languageCode: 'en',
+      goldNisabGrams: 85.0,
+      silverNisabGrams: 595.0,
+      goldNisabDisplay: '85.0 grams',
+      silverNisabDisplay: '595.0 grams',
+    ),
+    Country(
+      name: 'Saudi Arabia',
+      currency: 'SAR',
+      flag: '🇸🇦',
+      languageCode: 'en',
+      goldNisabGrams: 85.0,
+      silverNisabGrams: 595.0,
+      goldNisabDisplay: '85.0 grams',
+      silverNisabDisplay: '595.0 grams',
+    ),
   ];
 
   late Country _selectedCountry;
@@ -128,11 +194,28 @@ class ZakatProvider with ChangeNotifier {
 
   // Ushur State
   double cropYield = 0.0;
-  bool isNaturallyIrrigated = true;
+  IrrigationMethod irrigationMethod = IrrigationMethod.natural;
 
-  void updateUshur({double? yieldAmount, bool? isNatural}) {
+  bool get isNaturallyIrrigated => irrigationMethod == IrrigationMethod.natural;
+
+  double get ushurRate {
+    switch (irrigationMethod) {
+      case IrrigationMethod.natural:
+        return 0.10;
+      case IrrigationMethod.artificial:
+        return 0.05;
+      case IrrigationMethod.mixed:
+        return 0.075;
+    }
+  }
+
+  void updateUshur({double? yieldAmount, bool? isNatural, IrrigationMethod? method}) {
     if (yieldAmount != null) cropYield = yieldAmount;
-    if (isNatural != null) isNaturallyIrrigated = isNatural;
+    if (method != null) {
+      irrigationMethod = method;
+    } else if (isNatural != null) {
+      irrigationMethod = isNatural ? IrrigationMethod.natural : IrrigationMethod.artificial;
+    }
     notifyListeners();
   }
 
@@ -450,11 +533,28 @@ class ZakatProvider with ChangeNotifier {
     return ((current - previous) / previous) * 100.0;
   }
 
-  double get goldNisabThreshold => 87.5 * effectiveGoldPricePerGram;
+  double get goldNisabThreshold => _selectedCountry.goldNisabGrams * effectiveGoldPricePerGram;
 
-  double get silverNisabThreshold => 612.36 * effectiveSilverPricePerGram;
+  double get silverNisabThreshold => _selectedCountry.silverNisabGrams * effectiveSilverPricePerGram;
 
-  double get selectedNisabThreshold => nisabMethod == 'gold' ? goldNisabThreshold : silverNisabThreshold;
+  // Under Shariah consensus (Ahazz lil-Fuqara / Ahsan lil-Fuqara), if wealth includes
+  // cash, silver, business merchandise, or other assets besides gold, the Silver standard
+  // must be used. Only if wealth consists EXCLUSIVELY of gold (without any cash, bank, or other assets)
+  // may the Gold Nisab standard be applied.
+  bool get hasNonGoldZakatableAssets =>
+      cash > 0 ||
+      bank > 0 ||
+      computedSilverItemsValue > 0 ||
+      investments > 0 ||
+      businessAssets > 0 ||
+      receivables > 0 ||
+      otherAssets > 0;
+
+  bool get requiresSilverNisab => hasNonGoldZakatableAssets;
+
+  String get effectiveNisabMethod => requiresSilverNisab ? 'silver' : nisabMethod;
+
+  double get selectedNisabThreshold => effectiveNisabMethod == 'gold' ? goldNisabThreshold : silverNisabThreshold;
 
   double get _weightMultiplier => _selectedCountry.weightUnit == 'bhori' ? _bhoriToGrams : 1.0;
 
@@ -621,7 +721,7 @@ class ZakatProvider with ChangeNotifier {
 
   bool get isUshurEligible => cropYield >= ushurNisabKg;
 
-  double get ushurDue => isUshurEligible ? cropYield * (isNaturallyIrrigated ? 0.10 : 0.05) : 0.0;
+  double get ushurDue => isUshurEligible ? cropYield * ushurRate : 0.0;
 
   void setCalculationPriceOverrides({double? goldPerGram, double? silverPerGram, bool notify = true}) {
     final normalizedGold = (goldPerGram != null && goldPerGram > 0) ? goldPerGram : null;

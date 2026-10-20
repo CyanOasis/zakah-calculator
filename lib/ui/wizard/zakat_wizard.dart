@@ -999,8 +999,8 @@ class _ZakatWizardState extends State<ZakatWizard> {
                     Expanded(
                       child: _buildNisabOption(
                         label: AppLocalizations.of(context)!.silver_nisab_option,
-                        subLabel: AppLocalizations.of(context)!.silver_nisab_weight,
-                        selected: provider.nisabMethod == 'silver',
+                        subLabel: provider.selectedCountry.silverNisabDisplay,
+                        selected: provider.effectiveNisabMethod == 'silver',
                         onTap: () => provider.setNisabMethod('silver'),
                       ),
                     ),
@@ -1008,14 +1008,41 @@ class _ZakatWizardState extends State<ZakatWizard> {
                     Expanded(
                       child: _buildNisabOption(
                         label: AppLocalizations.of(context)!.gold_nisab_option,
-                        subLabel: AppLocalizations.of(context)!.gold_nisab_weight,
-                        selected: provider.nisabMethod == 'gold',
-                        onTap: () => provider.setNisabMethod('gold'),
+                        subLabel: provider.selectedCountry.goldNisabDisplay,
+                        selected: provider.effectiveNisabMethod == 'gold',
+                        onTap: () {
+                          if (provider.requiresSilverNisab) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('নগদ অর্থ বা মিশ্র সম্পদের ক্ষেত্রে সর্বসম্মত শরয়ী নিয়মানুযায়ী রুপার নিছাব প্রযোজ্য।'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          } else {
+                            provider.setNisabMethod('gold');
+                          }
+                        },
                       ),
                     ),
                   ],
                 ),
               ),
+              if (provider.requiresSilverNisab)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 14, color: Color(0xFF00796B)),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'মিশ্র সম্পদে সর্বসম্মত শরয়ী নিয়মানুযায়ী রুপার নিছাব প্রযোজ্য (আহযালুল ফুক্বারা)।',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF00796B), fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: 24),
               _buildHawlStatusRow(provider),
               const Padding(
@@ -1765,6 +1792,7 @@ class _ZakatWizardState extends State<ZakatWizard> {
       case _WealthEntryType.silver: return AppLocalizations.of(context)!.silver_weight;
       case _WealthEntryType.investment: return AppLocalizations.of(context)!.stocks;
       case _WealthEntryType.business: return AppLocalizations.of(context)!.business_assets;
+      case _WealthEntryType.debt: return 'চলতি বছরের প্রদেয় ঋণ বা কিস্তি (Immediate / Short-term Due Debts)';
       default: return '';
     }
   }

@@ -28,21 +28,46 @@ void main() {
       expect(ZakatProvider.parseLocalizedDouble(null), 0.0);
     });
 
-    test('Ushur 5 Wasaq Nisab threshold (653 kg) is strictly enforced', () {
+    test('Country specific Nisab gram weights match Shariah regional standards', () {
+      // Bangladesh: 87.48 g gold (7.5 tola/bhori), 612.35 g silver (52.5 tola/bhori)
+      final bd = provider.countries.firstWhere((c) => c.currency == 'BDT');
+      expect(bd.goldNisabGrams, 87.48);
+      expect(bd.silverNisabGrams, 612.35);
+
+      // Saudi Arabia / USA: 85.0 g gold (20 dinars), 595.0 g silver (200 dirhams)
+      final sa = provider.countries.firstWhere((c) => c.currency == 'SAR');
+      expect(sa.goldNisabGrams, 85.0);
+      expect(sa.silverNisabGrams, 595.0);
+    });
+
+    test('Mixed wealth consensus forces Silver Nisab standard', () {
+      provider.nisabMethod = 'gold'; // User tries to select gold
+      provider.cash = 50000.0; // Has cash (mixed wealth)
+
+      expect(provider.requiresSilverNisab, isTrue);
+      expect(provider.effectiveNisabMethod, 'silver');
+    });
+
+    test('Ushur 5 Wasaq Nisab threshold (653 kg) and mixed irrigation (7.5%)', () {
       // Below Nisab: 500 kg
       provider.updateUshur(yieldAmount: 500.0, isNatural: true);
       expect(provider.isUshurEligible, isFalse);
       expect(provider.ushurDue, 0.0);
 
-      // At or above Nisab (Natural irrigation = 10%)
-      provider.updateUshur(yieldAmount: 1000.0, isNatural: true);
+      // Natural irrigation = 10%
+      provider.updateUshur(yieldAmount: 1000.0, method: IrrigationMethod.natural);
       expect(provider.isUshurEligible, isTrue);
       expect(provider.ushurDue, 100.0);
 
-      // At or above Nisab (Artificial irrigation = 5%)
-      provider.updateUshur(yieldAmount: 1000.0, isNatural: false);
+      // Artificial irrigation = 5%
+      provider.updateUshur(yieldAmount: 1000.0, method: IrrigationMethod.artificial);
       expect(provider.isUshurEligible, isTrue);
       expect(provider.ushurDue, 50.0);
+
+      // Mixed irrigation = 7.5%
+      provider.updateUshur(yieldAmount: 1000.0, method: IrrigationMethod.mixed);
+      expect(provider.isUshurEligible, isTrue);
+      expect(provider.ushurDue, 75.0);
     });
 
     test('Livestock Zakat applies accurate Fiqh brackets', () {
