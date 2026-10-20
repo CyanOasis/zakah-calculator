@@ -7,7 +7,6 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:zakat/l10n/app_localizations.dart';
 import '../providers/zakat_provider.dart';
 
 class ZakatReportScreen extends StatefulWidget {

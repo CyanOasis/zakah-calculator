@@ -8,14 +8,12 @@
  */
 
 import 'dart:ui';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:zakat/l10n/app_localizations.dart';
 import 'providers/zakat_provider.dart';
-import 'ui/home_screen.dart';
 import 'ui/splash_screen.dart';
 
 /// Custom scroll behavior that enables drag scrolling with mouse/trackpad.

@@ -223,6 +223,11 @@ class _ZakatWizardState extends State<ZakatWizard> {
         ],
       ),
       actions: [
+        if (_currentStep == 2)
+          IconButton(
+            onPressed: () => _shareSummary(provider),
+            icon: const Icon(Icons.share, color: Colors.white, size: 20),
+          ),
         IconButton(
           onPressed: _showHelpDialog,
           icon: Container(
@@ -489,9 +494,6 @@ class _ZakatWizardState extends State<ZakatWizard> {
         bgColor = const Color(0xFFFFEBEE);
         icon = Icons.money_off_csred_outlined;
         break;
-      default:
-        bgColor = Colors.grey[100]!;
-        icon = Icons.help;
     }
     return Container(
       padding: const EdgeInsets.all(8),
@@ -1752,7 +1754,6 @@ class _ZakatWizardState extends State<ZakatWizard> {
       case _WealthEntryType.business: return AppLocalizations.of(context)!.business_entry;
       case _WealthEntryType.receivable: return AppLocalizations.of(context)!.receivables_entry;
       case _WealthEntryType.debt: return AppLocalizations.of(context)!.debt_entry;
-      default: return '';
     }
   }
 
